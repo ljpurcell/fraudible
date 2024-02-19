@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -13,12 +15,24 @@ import (
 	"github.com/unidoc/unipdf/v3/model"
 )
 
-func main() {
-    file := ""
+type payload struct {
+    Model string `json:"model"`
+    Input string `json:"input"`
+    Voice string `json:"voice"`
+}
 
-    if err := outputPdfText(file); err != nil {
-        fmt.Printf("Could not output PDF: %v", err)
+func main() {
+    pathPtr := flag.String("file", "", "The path to your selected file")
+    voicePtr := flag.String("voice", "alloy", "The voice your text will be read in. Choices are: - alloy (default)\n")
+    
+    flag.Parse()
+
+    text, err := os.ReadFile(*pathPtr)
+    if err != nil {
+        log.Fatalf("Could not read file %q: %v", *pathPtr, err)
     }
+
+    postToAPI(string(text), *voicePtr)
 }
 
 func outputPdfText(inputPath string) error {
@@ -45,6 +59,10 @@ func outputPdfText(inputPath string) error {
 	for i := 0; i < numPages; i++ {
 		pageNum := i + 1
 
+        if pageNum > 3 {
+            break
+        }
+
 		page, err := pdfReader.GetPage(pageNum)
 		if err != nil {
 			return err
@@ -69,19 +87,30 @@ func outputPdfText(inputPath string) error {
 	return nil
 }
 
-func postToAPI() {
+func postToAPI(content, voice string) {
 
 	url := "https://api.openai.com/v1/audio/speech"
 
-	payload := []byte(`
-        {
-            "model": "tts-1",
-            "input": "The quick brown fox jumped over the lazy dog",
-            "voice": "alloy"
-        }
-    `)
+    payload := payload{
+        Model: "tts-1",
+        Input: content,
+        Voice: voice,
+    }
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(payload))
+    p, err := json.Marshal(payload)
+    if err != nil {
+        log.Fatalf("Could not marshall payload %v: %v", payload, err)
+    }
+
+	// payloadObject := []byte(`
+ //        {
+ //            "model": "tts-1",
+ //            "input": "The quick brown fox jumped over the lazy dog",
+ //            "voice": "alloy"
+ //        }
+ //    `)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(p))
 	if err != nil {
 		log.Fatalf("Could not create POST request: %v", err)
 	}
