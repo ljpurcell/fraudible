@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/smtp"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -16,23 +17,49 @@ import (
 )
 
 type payload struct {
-    Model string `json:"model"`
-    Input string `json:"input"`
-    Voice string `json:"voice"`
+	Model string `json:"model"`
+	Input string `json:"input"`
+	Voice string `json:"voice"`
 }
 
 func main() {
-    pathPtr := flag.String("file", "", "The path to your selected file")
-    voicePtr := flag.String("voice", "alloy", "The voice your text will be read in. Choices are: - alloy (default)\n")
-    
-    flag.Parse()
+	pathPtr := flag.String("file", "", "The path to your selected file")
+	voicePtr := flag.String("voice", "alloy", "The voice your text will be read in. Choices are: - alloy (default)\n")
 
-    text, err := os.ReadFile(*pathPtr)
-    if err != nil {
-        log.Fatalf("Could not read file %q: %v", *pathPtr, err)
-    }
+	flag.Parse()
 
-    postToAPI(string(text), *voicePtr)
+	text, err := os.ReadFile(*pathPtr)
+	if err != nil {
+		log.Fatalf("Could not read file %q: %v", *pathPtr, err)
+	}
+
+	postToAPI(string(text), *voicePtr)
+
+	if _, err := os.Stat("response.mp3"); err == nil {
+		sendEmail()
+	}
+}
+
+func sendEmail() {
+	smtpServer := "smtp.example.com"
+	smtpPort := "587"
+	sender := ""
+	password := ""
+	recipient := ""
+
+	auth := smtp.PlainAuth("", sender, password, smtpServer)
+
+	msg := []byte("To: " + recipient + "\r\n" +
+		"Subject: Your audiofile\r\n" +
+		"\r\n" +
+		"Here's a some text")
+
+	err := smtp.SendMail(smtpServer+":"+smtpPort, auth, sender, []string{recipient}, msg)
+	if err != nil {
+		log.Fatalf("Could not send email: %v", err)
+	}
+
+	fmt.Println("Email sent")
 }
 
 func outputPdfText(inputPath string) error {
@@ -59,9 +86,9 @@ func outputPdfText(inputPath string) error {
 	for i := 0; i < numPages; i++ {
 		pageNum := i + 1
 
-        if pageNum > 3 {
-            break
-        }
+		if pageNum > 3 {
+			break
+		}
 
 		page, err := pdfReader.GetPage(pageNum)
 		if err != nil {
@@ -91,24 +118,24 @@ func postToAPI(content, voice string) {
 
 	url := "https://api.openai.com/v1/audio/speech"
 
-    payload := payload{
-        Model: "tts-1",
-        Input: content,
-        Voice: voice,
-    }
+	payload := payload{
+		Model: "tts-1",
+		Input: content,
+		Voice: voice,
+	}
 
-    p, err := json.Marshal(payload)
-    if err != nil {
-        log.Fatalf("Could not marshall payload %v: %v", payload, err)
-    }
+	p, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatalf("Could not marshall payload %v: %v", payload, err)
+	}
 
 	// payloadObject := []byte(`
- //        {
- //            "model": "tts-1",
- //            "input": "The quick brown fox jumped over the lazy dog",
- //            "voice": "alloy"
- //        }
- //    `)
+	//        {
+	//            "model": "tts-1",
+	//            "input": "The quick brown fox jumped over the lazy dog",
+	//            "voice": "alloy"
+	//        }
+	//    `)
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(p))
 	if err != nil {
