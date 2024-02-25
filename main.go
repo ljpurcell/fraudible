@@ -57,11 +57,11 @@ func NewSender() *Sender {
 
 func (s *Sender) NewEmail(to, subject, body string) *Email {
 	return &Email{
-		From:    s.Details.Address,
-		To:      to,
-		Subject: subject,
-		Body:    body,
-        Attachments: make(map[string][]byte),
+		From:        s.Details.Address,
+		To:          to,
+		Subject:     subject,
+		Body:        body,
+		Attachments: make(map[string][]byte),
 	}
 }
 
@@ -84,13 +84,13 @@ func (e *Email) AttachFile(path string) error {
 		return err
 	}
 
-    _, name := filepath.Split(path)
-    e.Attachments[name] = b
-    return nil
+	_, name := filepath.Split(path)
+	e.Attachments[name] = b
+	return nil
 }
 
 func (e *Email) ToBytes() []byte {
-    buf := bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
 	hasAttachments := len(e.Attachments) > 0
 
 	buf.WriteString(fmt.Sprintf("To: %s\n", e.To))
@@ -104,7 +104,7 @@ func (e *Email) ToBytes() []byte {
 		buf.WriteString(fmt.Sprintf("Content-Type: multipart/mixed; boundary=%s\n", boundary))
 		buf.WriteString(fmt.Sprintf("--%s\n", boundary))
 	} else {
-		buf.WriteString("Content-Type: text/plain; charset=utf-8\n")
+		buf.WriteString("Content-Type: text/plain; charset=utf-8\n\n")
 	}
 
 	buf.WriteString(e.Body)
@@ -112,17 +112,16 @@ func (e *Email) ToBytes() []byte {
 	if hasAttachments {
 		for k, v := range e.Attachments {
 			buf.WriteString(fmt.Sprintf("\n\n--%s\n", boundary))
-			buf.WriteString(fmt.Sprintf("Content-Type: %s", http.DetectContentType(v)))
+			buf.WriteString("Content-Type: audio/mpeg\n")
 			buf.WriteString("Content-Transfer-Encoding: base64\n")
-			buf.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=%s\n", k))
+			buf.WriteString(fmt.Sprintf("Content-Disposition: attachment; filename=\"%s\"\n\n", k))
 
-            b := make([]byte, base64.StdEncoding.EncodedLen(len(v)))
-            base64.StdEncoding.Encode(b, v)
-            buf.Write(b)
-            buf.WriteString(fmt.Sprintf("\n--%s", boundary))
+			b := make([]byte, base64.StdEncoding.EncodedLen(len(v)))
+			base64.StdEncoding.Encode(b, v)
+			buf.Write(b)
 		}
 
-        buf.WriteString("--")
+		buf.WriteString(fmt.Sprintf("\n--%s--\n", boundary))
 	}
 
 	return buf.Bytes()
@@ -136,7 +135,7 @@ func main() {
 
 	pathPtr := flag.String("file", "", "The path to your selected file")
 	voicePtr := flag.String("voice", "alloy", "The voice your text will be read in. Choices are: - alloy (default)\n")
-    _ = voicePtr
+	_ = voicePtr
 
 	flag.Parse()
 
@@ -148,10 +147,10 @@ func main() {
 	// postToAPI(string(text), *voicePtr)
 
 	if _, err := os.Stat("response.mp3"); err == nil {
-        sender := NewSender()
-        email := sender.NewEmail(os.Getenv("APP_EMAIL_USERNAME"), "You Audio File", "Here it is - Great job!")
-        email.AttachFile("response.mp3")
-        sender.Send(email)
+		sender := NewSender()
+		email := sender.NewEmail(os.Getenv("APP_EMAIL_USERNAME"), "You Audio File", "Here it is - Great job!")
+		email.AttachFile("response.mp3")
+		sender.Send(email)
 	}
 }
 
