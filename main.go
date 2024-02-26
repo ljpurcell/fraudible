@@ -16,8 +16,6 @@ import (
 	"path/filepath"
 
 	"github.com/joho/godotenv"
-	"github.com/unidoc/unipdf/v3/extractor"
-	"github.com/unidoc/unipdf/v3/model"
 )
 
 type Sender struct {
@@ -152,58 +150,6 @@ func main() {
 		email.AttachFile("response.mp3")
 		sender.Send(email)
 	}
-}
-
-func outputPdfText(inputPath string) error {
-	f, err := os.Open(inputPath)
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-	pdfReader, err := model.NewPdfReader(f)
-	if err != nil {
-		return err
-	}
-
-	numPages, err := pdfReader.GetNumPages()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("--------------------\n")
-	fmt.Printf("PDF to text extraction:\n")
-	fmt.Printf("--------------------\n")
-	for i := 0; i < numPages; i++ {
-		pageNum := i + 1
-
-		if pageNum > 3 {
-			break
-		}
-
-		page, err := pdfReader.GetPage(pageNum)
-		if err != nil {
-			return err
-		}
-
-		ex, err := extractor.New(page)
-		if err != nil {
-			return err
-		}
-
-		text, err := ex.ExtractText()
-		if err != nil {
-			return err
-		}
-
-		fmt.Println("------------------------------")
-		fmt.Printf("Page %d:\n", pageNum)
-		fmt.Printf("\"%s\"\n", text)
-		fmt.Println("------------------------------")
-	}
-
-	return nil
 }
 
 func postToAPI(content, voice string) {
