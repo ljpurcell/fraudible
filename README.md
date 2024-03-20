@@ -1,2 +1,2 @@
 # laudible
-Convert written files into audio and send to you phone to listen to.
+Convert written files into audio. Audible for cheapskates.
