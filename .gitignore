@@ -7,6 +7,9 @@
 # Test files
 *.txt
 
+# Logs
+*.log
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
